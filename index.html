@@ -123,11 +123,24 @@
       gap: 10px;
     }
 
+    .point-header,
     .point-row {
       display: grid;
       grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr) 40px;
       gap: 10px;
       align-items: center;
+    }
+
+    .point-header {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0;
+      padding: 0 2px;
+    }
+
+    .point-header span:not(:first-child) {
+      padding-left: 10px;
     }
 
     .point-index {
@@ -276,6 +289,11 @@
       }
 
       .point-row {
+        grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1fr) 38px;
+        gap: 8px;
+      }
+
+      .point-header {
         grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1fr) 38px;
         gap: 8px;
       }
@@ -558,7 +576,16 @@
     }
 
     function renderPoints(focusLast = false) {
-      pointList.innerHTML = points.map((point, index) => `
+      const header = `
+        <div class="point-header" aria-hidden="true">
+          <span>#</span>
+          <span>x</span>
+          <span>y</span>
+          <span></span>
+        </div>
+      `;
+
+      pointList.innerHTML = header + points.map((point, index) => `
         <div class="point-row" data-index="${index}">
           <div class="point-index">${index + 1}</div>
           <input type="number" inputmode="decimal" step="any" value="${point.x}" aria-label="第 ${index + 1} 个点的 x" placeholder="x${index + 1}">
