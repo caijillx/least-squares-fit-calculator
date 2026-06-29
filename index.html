@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>最小二乘直线拟合</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #17202a;
+      --muted: #687385;
+      --line: #dfe4ea;
+      --accent: #126f74;
+      --accent-strong: #0c5559;
+      --danger: #ba3b46;
+      --shadow: 0 16px 40px rgba(26, 39, 54, 0.10);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Microsoft YaHei", sans-serif;
+    }
+
+    body {
+      padding: 18px 14px 28px;
+    }
+
+    .app {
+      width: min(100%, 820px);
+      margin: 0 auto;
+    }
+
+    header {
+      padding: 4px 2px 16px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .subhead {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid rgba(223, 228, 234, 0.9);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.3;
+      letter-spacing: 0;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+      font-size: 14px;
+      padding: 8px 12px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    button.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+      font-weight: 650;
+    }
+
+    button.primary:active {
+      background: var(--accent-strong);
+    }
+
+    .point-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .point-row {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) minmax(0, 1fr) 42px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .point-index {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font: 16px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: var(--text);
+      background: #fbfcfd;
+      outline: none;
+    }
+
+    input[type="number"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(18, 111, 116, 0.14);
+    }
+
+    .remove-point {
+      width: 42px;
+      min-width: 42px;
+      padding: 0;
+      font-size: 20px;
+      line-height: 1;
+      color: var(--muted);
+    }
+
+    .remove-point:disabled {
+      color: #b8c0cb;
+      background: #f5f7f9;
+      cursor: not-allowed;
+    }
+
+    .hint {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .result {
+      display: grid;
+      gap: 10px;
+    }
+
+    .equation {
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      border-radius: 8px;
+      background: #eef8f6;
+      color: #073f42;
+      font-size: 20px;
+      line-height: 1.35;
+      font-weight: 750;
+      overflow-wrap: anywhere;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbfcfd;
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.3;
+    }
+
+    .stat-value {
+      margin-top: 4px;
+      font-size: 17px;
+      font-weight: 700;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .message {
+      min-height: 20px;
+      color: var(--danger);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .chart-wrap {
+      width: 100%;
+      aspect-ratio: 1.45;
+      min-height: 240px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    @media (min-width: 760px) {
+      body {
+        padding-top: 28px;
+      }
+
+      .grid {
+        grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+        align-items: start;
+      }
+
+      .span-all {
+        grid-column: 1 / -1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <h1>最小二乘直线拟合</h1>
+      <p class="subhead">输入 x、y 数据点，计算一次线性拟合、R²、预测值和残差。</p>
+    </header>
+
+    <section class="grid">
+      <div class="panel">
+        <div class="panel-title">
+          <h2>数据</h2>
+          <div class="toolbar">
+            <button type="button" class="primary" id="addPointBtn">增加点</button>
+            <button type="button" id="clearBtn">清空</button>
+          </div>
+        </div>
+        <div class="point-list" id="pointList" aria-label="x y 数据输入"></div>
+        <p class="hint">每行输入一个点，至少需要两组有效 x、y 数据。</p>
+      </div>
+
+      <div class="panel result">
+        <div class="panel-title">
+          <h2>结果</h2>
+          <button type="button" class="primary" id="copyBtn">复制结果</button>
+        </div>
+        <div class="equation" id="equation">等待输入数据</div>
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-label">斜率 k</div>
+            <div class="stat-value" id="slope">-</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">截距 b</div>
+            <div class="stat-value" id="intercept">-</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">R²</div>
+            <div class="stat-value" id="r2">-</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">数据点</div>
+            <div class="stat-value" id="count">0</div>
+          </div>
+        </div>
+        <div class="message" id="message"></div>
+      </div>
+
+      <div class="panel span-all">
+        <div class="panel-title">
+          <h2>图表</h2>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="chart"></canvas>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const pointList = document.getElementById("pointList");
+    const equation = document.getElementById("equation");
+    const slopeEl = document.getElementById("slope");
+    const interceptEl = document.getElementById("intercept");
+    const r2El = document.getElementById("r2");
+    const countEl = document.getElementById("count");
+    const messageEl = document.getElementById("message");
+    const canvas = document.getElementById("chart");
+    const ctx = canvas.getContext("2d");
+    let latestResult = null;
+    let points = [{ x: "", y: "" }, { x: "", y: "" }];
+
+    function readPairs() {
+      const pairs = [];
+      const errors = [];
+
+      points.forEach((point, index) => {
+        const hasX = String(point.x).trim() !== "";
+        const hasY = String(point.y).trim() !== "";
+        if (!hasX && !hasY) return;
+
+        const x = Number(point.x);
+        const y = Number(point.y);
+        if (!hasX || !hasY || !Number.isFinite(x) || !Number.isFinite(y)) {
+          errors.push(`第 ${index + 1} 个点需要填写有效的 x 和 y`);
+          return;
+        }
+
+        pairs.push({ x, y });
+      });
+
+      return { pairs, errors };
+    }
+
+    function fitLine(pairs) {
+      const n = pairs.length;
+      const sumX = pairs.reduce((sum, p) => sum + p.x, 0);
+      const sumY = pairs.reduce((sum, p) => sum + p.y, 0);
+      const sumXY = pairs.reduce((sum, p) => sum + p.x * p.y, 0);
+      const sumXX = pairs.reduce((sum, p) => sum + p.x * p.x, 0);
+      const denominator = n * sumXX - sumX * sumX;
+
+      if (Math.abs(denominator) < Number.EPSILON) {
+        throw new Error("所有 x 过于接近，无法拟合直线");
+      }
+
+      const k = (n * sumXY - sumX * sumY) / denominator;
+      const b = (sumY - k * sumX) / n;
+      const meanY = sumY / n;
+      let ssRes = 0;
+      let ssTot = 0;
+      const details = pairs.map((p) => {
+        const predicted = k * p.x + b;
+        const residual = p.y - predicted;
+        ssRes += residual * residual;
+        ssTot += (p.y - meanY) * (p.y - meanY);
+        return { ...p, predicted, residual };
+      });
+      const r2 = ssTot === 0 ? 1 : 1 - ssRes / ssTot;
+
+      return { k, b, r2, details };
+    }
+
+    function fmt(value, digits = 6) {
+      if (!Number.isFinite(value)) return "-";
+      const rounded = Number(value.toFixed(digits));
+      return rounded.toLocaleString("zh-CN", { maximumFractionDigits: digits });
+    }
+
+    function isNearlyZero(value) {
+      return Math.abs(value) < 1e-10;
+    }
+
+    function formatEquation(k, b) {
+      const hasSlope = !isNearlyZero(k);
+      const hasIntercept = !isNearlyZero(b);
+
+      if (!hasSlope && !hasIntercept) return "y = 0";
+
+      let right = "";
+      if (hasSlope) {
+        if (Math.abs(k - 1) < 1e-10) {
+          right = "x";
+        } else if (Math.abs(k + 1) < 1e-10) {
+          right = "-x";
+        } else {
+          right = `${fmt(k)}x`;
+        }
+      }
+
+      if (hasIntercept) {
+        const sign = b > 0 ? "+" : "-";
+        const value = fmt(Math.abs(b));
+        right = right ? `${right} ${sign} ${value}` : `${b < 0 ? "-" : ""}${value}`;
+      }
+
+      return `y = ${right}`;
+    }
+
+    function drawChart(pairs, result) {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const scale = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.floor(rect.width * scale));
+      canvas.height = Math.max(1, Math.floor(rect.height * scale));
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+
+      const width = rect.width;
+      const height = rect.height;
+      ctx.clearRect(0, 0, width, height);
+
+      const pad = { left: 56, right: 18, top: 18, bottom: 42 };
+      const plotW = width - pad.left - pad.right;
+      const plotH = height - pad.top - pad.bottom;
+      const pointInset = 14;
+      const innerW = Math.max(1, plotW - pointInset * 2);
+      const innerH = Math.max(1, plotH - pointInset * 2);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, width, height);
+
+      if (!pairs.length || !result) {
+        ctx.fillStyle = "#687385";
+        ctx.font = "14px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.fillText("输入至少两组数据后显示图表", pad.left, height / 2);
+        return;
+      }
+
+      const xs = pairs.map((p) => p.x);
+      const ys = pairs.map((p) => p.y);
+      const yLine = [Math.min(...xs), Math.max(...xs)].map((x) => result.k * x + result.b);
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys, ...yLine);
+      const maxY = Math.max(...ys, ...yLine);
+      const spanX = maxX - minX || 1;
+      const spanY = maxY - minY || 1;
+
+      const toX = (x) => pad.left + pointInset + ((x - minX) / spanX) * innerW;
+      const toY = (y) => pad.top + pointInset + innerH - ((y - minY) / spanY) * innerH;
+
+      ctx.strokeStyle = "#dfe4ea";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 0; i <= 4; i++) {
+        const x = pad.left + (plotW * i) / 4;
+        const y = pad.top + (plotH * i) / 4;
+        ctx.moveTo(x, pad.top);
+        ctx.lineTo(x, pad.top + plotH);
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(pad.left + plotW, y);
+      }
+      ctx.stroke();
+
+      ctx.strokeStyle = "#17202a";
+      ctx.beginPath();
+      ctx.moveTo(pad.left, pad.top + plotH);
+      ctx.lineTo(pad.left + plotW, pad.top + plotH);
+      ctx.moveTo(pad.left, pad.top);
+      ctx.lineTo(pad.left, pad.top + plotH);
+      ctx.stroke();
+
+      ctx.fillStyle = "#687385";
+      ctx.font = "12px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      for (let i = 0; i <= 4; i++) {
+        const x = pad.left + (plotW * i) / 4;
+        const value = minX + (spanX * i) / 4;
+        ctx.fillText(fmt(value, 3), x, pad.top + plotH + 12);
+      }
+
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+      for (let i = 0; i <= 4; i++) {
+        const y = pad.top + plotH - (plotH * i) / 4;
+        const value = minY + (spanY * i) / 4;
+        ctx.fillText(fmt(value, 3), pad.left - 12, y);
+      }
+
+      ctx.strokeStyle = "#126f74";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(toX(minX), toY(result.k * minX + result.b));
+      ctx.lineTo(toX(maxX), toY(result.k * maxX + result.b));
+      ctx.stroke();
+
+      ctx.font = "12px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillStyle = "#cf4f3e";
+      pairs.forEach((p, index) => {
+        const x = toX(p.x);
+        const y = toY(p.y);
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#17202a";
+        ctx.fillText(String(index + 1), x, y + 8);
+        ctx.fillStyle = "#cf4f3e";
+      });
+      ctx.textAlign = "start";
+      ctx.textBaseline = "alphabetic";
+    }
+
+    function renderPoints(focusLast = false) {
+      pointList.innerHTML = points.map((point, index) => `
+        <div class="point-row" data-index="${index}">
+          <div class="point-index">${index + 1}</div>
+          <input type="number" inputmode="decimal" step="any" value="${point.x}" aria-label="第 ${index + 1} 个点的 x" placeholder="x${index + 1}">
+          <input type="number" inputmode="decimal" step="any" value="${point.y}" aria-label="第 ${index + 1} 个点的 y" placeholder="y${index + 1}">
+          <button type="button" class="remove-point" aria-label="删除第 ${index + 1} 个点" ${points.length <= 2 ? "disabled" : ""}>×</button>
+        </div>
+      `).join("");
+
+      if (focusLast) {
+        const lastInput = pointList.querySelector(".point-row:last-child input");
+        if (lastInput) lastInput.focus();
+      }
+    }
+
+    function resetResult(message = "") {
+      latestResult = null;
+      equation.textContent = "等待输入数据";
+      slopeEl.textContent = "-";
+      interceptEl.textContent = "-";
+      r2El.textContent = "-";
+      countEl.textContent = "0";
+      messageEl.textContent = message;
+      drawChart([], null);
+    }
+
+    function update() {
+      const { pairs, errors } = readPairs();
+      countEl.textContent = String(pairs.length);
+
+      if (pairs.length < 2) {
+        resetResult(errors[0] || "至少需要两组有效数据");
+        countEl.textContent = String(pairs.length);
+        return;
+      }
+
+      try {
+        const result = fitLine(pairs);
+        latestResult = { ...result, count: pairs.length };
+        equation.textContent = formatEquation(result.k, result.b);
+        slopeEl.textContent = fmt(result.k);
+        interceptEl.textContent = fmt(result.b);
+        r2El.textContent = fmt(result.r2);
+        countEl.textContent = String(pairs.length);
+        messageEl.textContent = errors.length ? errors[0] : "";
+        drawChart(pairs, result);
+      } catch (error) {
+        resetResult(error.message);
+        countEl.textContent = String(pairs.length);
+      }
+    }
+
+    async function copyResult() {
+      if (!latestResult) {
+        messageEl.textContent = "暂无可复制的拟合结果";
+        return;
+      }
+
+      const text = [
+        equation.textContent,
+        `k = ${fmt(latestResult.k)}`,
+        `b = ${fmt(latestResult.b)}`,
+        `R2 = ${fmt(latestResult.r2)}`,
+        `n = ${latestResult.count}`
+      ].join("\n");
+
+      try {
+        await navigator.clipboard.writeText(text);
+        messageEl.style.color = "#126f74";
+        messageEl.textContent = "结果已复制";
+        window.setTimeout(() => {
+          messageEl.style.color = "";
+          messageEl.textContent = "";
+        }, 1600);
+      } catch (error) {
+        messageEl.textContent = "当前浏览器不允许直接复制，请手动选中结果";
+      }
+    }
+
+    pointList.addEventListener("input", (event) => {
+      if (event.target.tagName !== "INPUT") return;
+
+      const row = event.target.closest(".point-row");
+      const index = Number(row.dataset.index);
+      const inputs = row.querySelectorAll("input");
+      points[index] = {
+        x: inputs[0].value,
+        y: inputs[1].value
+      };
+      update();
+    });
+
+    pointList.addEventListener("click", (event) => {
+      const button = event.target.closest(".remove-point");
+      if (!button || points.length <= 2) return;
+
+      const row = button.closest(".point-row");
+      const index = Number(row.dataset.index);
+      points.splice(index, 1);
+      renderPoints();
+      update();
+    });
+
+    document.getElementById("addPointBtn").addEventListener("click", () => {
+      points.push({ x: "", y: "" });
+      renderPoints(true);
+      update();
+    });
+
+    document.getElementById("clearBtn").addEventListener("click", () => {
+      points = [{ x: "", y: "" }, { x: "", y: "" }];
+      renderPoints(true);
+      resetResult("");
+    });
+
+    document.getElementById("copyBtn").addEventListener("click", copyResult);
+    window.addEventListener("resize", update);
+
+    renderPoints();
+    update();
+  </script>
+</body>
+</html>
